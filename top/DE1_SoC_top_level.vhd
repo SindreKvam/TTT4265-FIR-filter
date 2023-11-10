@@ -201,7 +201,6 @@ begin
     )
     port map (
         clk => CLOCK_50,
-        rst => KEY_N(0),
         d_ready => d_ready,
         d_valid => d_valid,
         data => data_lfsr
@@ -213,7 +212,6 @@ begin
     )
     port map (
         clk => CLOCK_50,
-        rst => KEY_N(0),
 
         prev_ready => d_ready,
         prev_valid => d_valid,
@@ -233,7 +231,7 @@ begin
 			audio_0_avalon_left_channel_sink_valid           => next_valid,           --                                            .valid
 			audio_0_avalon_left_channel_sink_ready           => next_ready_l,           --                                            .ready
 			clk_clk                                          => CLOCK_50,                                          --                                         clk.clk
-			rst_reset_n                                      => KEY_N(0),                                      --                                         rst.reset_n
+			rst_reset_n                                      => '1',                                      --                                         rst.reset_n
 			audio_and_video_config_0_external_interface_SDAT => FPGA_I2C_SDAT, -- audio_and_video_config_0_external_interface.SDAT
 			audio_and_video_config_0_external_interface_SCLK => FPGA_I2C_SCLK, --                                            .SCLK
 			audio_0_external_interface_BCLK                  => AUD_BCLK,                  --                  audio_0_external_interface.BCLK

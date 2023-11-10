@@ -12,7 +12,7 @@ entity lfsr is
     );
     port (
         clk : in std_logic;
-        rst : in std_logic;
+
         d_ready : in std_logic;
         d_valid : out std_logic;
         data : out std_logic_vector(0 downto 0) := (others => '1')
@@ -40,11 +40,7 @@ begin
     begin
         if rising_edge(clk) then
 
-            if (rst = '1') then
-                -- Reset
-                r_lfsr <= SEED;
-
-            elsif (d_ready = '1') then
+            if (d_ready = '1') then
                 -- LFSR logic
                 r_lfsr   <= '0' & r_lfsr(32 downto 2) xor w_mask;
                 d_valid  <= '1';

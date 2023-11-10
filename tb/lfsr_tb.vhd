@@ -21,7 +21,6 @@ architecture sim of lfsr_tb is
     constant N : integer := 32;
 
     signal clk : std_logic := '1';
-    signal rst : std_logic := '1';
     signal d_ready : std_logic := '0';
     signal d_valid : std_logic;
     signal data : std_logic_vector(0 downto 0);
@@ -36,7 +35,6 @@ begin
     )
     port map (
         clk => clk,
-        rst => rst,
         d_ready => d_ready,
         d_valid => d_valid,
         data => data
@@ -51,10 +49,6 @@ begin
 
         test_runner_setup(runner, runner_cfg);
 
-
-        wait for clk_period * 2;
-
-        rst <= '0';
 
         wait for clk_period;
 

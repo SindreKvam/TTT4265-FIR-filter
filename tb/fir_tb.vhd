@@ -19,7 +19,6 @@ architecture sim of fir_tb is
     constant clk_period : time := 1 sec / clk_hz;
 
     signal clk : std_logic := '1';
-    signal rst : std_logic := '1';
 
     signal prev_ready : std_logic;
     signal prev_valid : std_logic;
@@ -39,7 +38,6 @@ begin
     )
     port map (
         clk => clk,
-        rst => rst,
 
         prev_ready => prev_ready,
         prev_valid => prev_valid,
@@ -54,7 +52,6 @@ begin
     begin
         wait for clk_period * 2;
 
-        rst <= '0';
         next_ready <= '1';
 
         wait for clk_period * 10;

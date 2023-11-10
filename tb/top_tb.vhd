@@ -19,7 +19,6 @@ architecture sim of top_tb is
     constant clk_period : time := 1 sec / clk_hz;
 
     signal clk : std_logic := '1';
-    signal rst : std_logic := '1';
 
     -- LFSR 
     signal d_ready : std_logic := '0';
@@ -41,7 +40,6 @@ begin
     )
     port map (
         clk => clk,
-        rst => rst,
         d_ready => d_ready,
         d_valid => d_valid,
         data => data_lfsr
@@ -53,7 +51,6 @@ begin
     )
     port map (
         clk => clk,
-        rst => rst,
 
         prev_ready => d_ready,
         prev_valid => d_valid,
@@ -72,10 +69,6 @@ begin
         -------------------------------
 
         test_runner_setup(runner, runner_cfg);
-
-        wait for clk_period * 2;
-
-        rst <= '0';
 
         wait for clk_period * 20;
 

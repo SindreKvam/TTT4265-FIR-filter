@@ -8,7 +8,6 @@ entity fir is
     );
     port (
         clk : in std_logic;
-        rst : in std_logic;
         
         prev_ready : out std_logic;
         prev_valid : in std_logic;

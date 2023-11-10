@@ -165,6 +165,80 @@ end entity DE1_SoC_top_level;
 
 architecture rtl of DE1_SoC_top_level is
 
+    component audio_driver is
+		port (
+			audio_0_avalon_right_channel_sink_data           : in    std_logic_vector(23 downto 0) := (others => 'X'); -- data
+			audio_0_avalon_right_channel_sink_valid          : in    std_logic                     := 'X';             -- valid
+			audio_0_avalon_right_channel_sink_ready          : out   std_logic;                                        -- ready
+			audio_0_avalon_left_channel_sink_data            : in    std_logic_vector(23 downto 0) := (others => 'X'); -- data
+			audio_0_avalon_left_channel_sink_valid           : in    std_logic                     := 'X';             -- valid
+			audio_0_avalon_left_channel_sink_ready           : out   std_logic;                                        -- ready
+			clk_clk                                          : in    std_logic                     := 'X';             -- clk
+			rst_reset_n                                      : in    std_logic                     := 'X';             -- reset_n
+			audio_and_video_config_0_external_interface_SDAT : inout std_logic                     := 'X';             -- SDAT
+			audio_and_video_config_0_external_interface_SCLK : out   std_logic;                                        -- SCLK
+			audio_0_external_interface_BCLK                  : in    std_logic                     := 'X';             -- BCLK
+			audio_0_external_interface_DACDAT                : out   std_logic;                                        -- DACDAT
+			audio_0_external_interface_DACLRCK               : in    std_logic                     := 'X'              -- DACLRCK
+		);
+	end component audio_driver;
+
+    signal data_lfsr : std_logic_vector(0 downto 0);
+    signal d_ready : std_logic;
+    signal d_valid : std_logic;
+
+    signal next_ready_l : std_logic;
+    signal next_ready_r : std_logic;
+    signal next_valid : std_logic;
+
+    signal data_out : std_logic_vector(23 downto 0);
+
 begin
+
+    LFSR_DUT : entity work.lfsr(rtl)
+    generic map (
+        SEED => x"DEADBABE"
+    )
+    port map (
+        clk => CLOCK_50,
+        rst => KEY_N(0),
+        d_ready => d_ready,
+        d_valid => d_valid,
+        data => data_lfsr
+    );
+
+    FIR_DUT : entity work.fir(rtl)
+    generic map(
+        FIR_LENGTH => 256
+    )
+    port map (
+        clk => CLOCK_50,
+        rst => KEY_N(0),
+
+        prev_ready => d_ready,
+        prev_valid => d_valid,
+        data_in => data_lfsr,
+
+        next_ready => next_ready_l and next_ready_r,
+        next_valid => next_valid,
+        data_out => data_out
+    );
+
+    AUDIO_INST : component audio_driver
+		port map (
+			audio_0_avalon_right_channel_sink_data           => data_out,           --           audio_0_avalon_right_channel_sink.data
+			audio_0_avalon_right_channel_sink_valid          => next_valid,          --                                            .valid
+			audio_0_avalon_right_channel_sink_ready          => next_ready_r,          --                                            .ready
+			audio_0_avalon_left_channel_sink_data            => data_out,            --            audio_0_avalon_left_channel_sink.data
+			audio_0_avalon_left_channel_sink_valid           => next_valid,           --                                            .valid
+			audio_0_avalon_left_channel_sink_ready           => next_ready_l,           --                                            .ready
+			clk_clk                                          => CLOCK_50,                                          --                                         clk.clk
+			rst_reset_n                                      => KEY_N(0),                                      --                                         rst.reset_n
+			audio_and_video_config_0_external_interface_SDAT => FPGA_I2C_SDAT, -- audio_and_video_config_0_external_interface.SDAT
+			audio_and_video_config_0_external_interface_SCLK => FPGA_I2C_SCLK, --                                            .SCLK
+			audio_0_external_interface_BCLK                  => AUD_BCLK,                  --                  audio_0_external_interface.BCLK
+			audio_0_external_interface_DACDAT                => AUD_DACDAT,                --                                            .DACDAT
+			audio_0_external_interface_DACLRCK               => AUD_DACLRCK                --                                            .DACLRCK
+		);
 
 end;

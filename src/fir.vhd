@@ -47,6 +47,8 @@ architecture rtl of fir is
                                 '1'&x"F0", '0'&x"63", '1'&x"91", '0'&x"28", '0'&x"3A", '1'&x"8D", '0'&x"56", '0'&x"04", '1'&x"A4", '0'&x"6F", '1'&x"CE", '1'&x"CF", '0'&x"6E", '1'&x"A4", '0'&x"05", '0'&x"53");
 
     signal accumulator : signed(23 downto 0) := (others => '0');
+
+    signal tap_counter : unsigned(11 downto 0) := (others => '0');
     
 
 begin
@@ -55,7 +57,6 @@ begin
 
         variable v_prev_ready : std_logic := '0';
         variable v_next_valid : std_logic := '0';
-        variable v_accumulator : signed(23 downto 0);
 
     begin
         
@@ -63,7 +64,6 @@ begin
 
             -- Default values
             v_prev_ready := '0';
-            v_accumulator := (others => '0');
             v_next_valid := '0';
             
             case state is
@@ -91,14 +91,15 @@ begin
                 -------------------------------
                 when CALCULATE =>
                     -------------------------------
-                    -- What does timing violation mean?
-                    for i in 0 to FIR_LENGTH - 1 loop
-                        v_accumulator := v_accumulator + (coeff(i) * to_signed(-1, 1) *  signed(delay_line(i)(0 downto 0)));
-                        -- Signed delay_line gives -1 and 0 as outputs from LFSR, multiply by -1 to revert this back
-                    end loop;
 
-                    accumulator <= v_accumulator;
-                    state <= HOLD_DATA_OUT;
+                    accumulator <= accumulator + (coeff(to_integer(tap_counter)) * signed(delay_line(to_integer(tap_counter))(0 downto 0)));
+
+                    if (tap_counter < FIR_LENGTH - 1) then
+                        tap_counter <= tap_counter + 1;
+                    else
+                        tap_counter <= (others => '0');
+                        state <= HOLD_DATA_OUT;
+                    end if;
 
                 -------------------------------
                 when HOLD_DATA_OUT =>

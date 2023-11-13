@@ -17,6 +17,11 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+library ieee_proposed;
+use ieee_proposed.fixed_float_types.all; -- ieee_proposed for VHDL-93 version
+use ieee_proposed.fixed_pkg.all; -- ieee_proposed for compatibility version
 
 entity DE1_SoC_top_level is
     port(
@@ -167,33 +172,91 @@ architecture rtl of DE1_SoC_top_level is
 
     component audio_driver is
 		port (
-			audio_0_avalon_right_channel_sink_data           : in    std_logic_vector(23 downto 0) := (others => 'X'); -- data
-			audio_0_avalon_right_channel_sink_valid          : in    std_logic                     := 'X';             -- valid
-			audio_0_avalon_right_channel_sink_ready          : out   std_logic;                                        -- ready
 			audio_0_avalon_left_channel_sink_data            : in    std_logic_vector(23 downto 0) := (others => 'X'); -- data
 			audio_0_avalon_left_channel_sink_valid           : in    std_logic                     := 'X';             -- valid
 			audio_0_avalon_left_channel_sink_ready           : out   std_logic;                                        -- ready
-			clk_clk                                          : in    std_logic                     := 'X';             -- clk
-			rst_reset_n                                      : in    std_logic                     := 'X';             -- reset_n
-			audio_and_video_config_0_external_interface_SDAT : inout std_logic                     := 'X';             -- SDAT
-			audio_and_video_config_0_external_interface_SCLK : out   std_logic;                                        -- SCLK
+			audio_0_avalon_right_channel_sink_data           : in    std_logic_vector(23 downto 0) := (others => 'X'); -- data
+			audio_0_avalon_right_channel_sink_valid          : in    std_logic                     := 'X';             -- valid
+			audio_0_avalon_right_channel_sink_ready          : out   std_logic;                                        -- ready
 			audio_0_external_interface_BCLK                  : in    std_logic                     := 'X';             -- BCLK
 			audio_0_external_interface_DACDAT                : out   std_logic;                                        -- DACDAT
-			audio_0_external_interface_DACLRCK               : in    std_logic                     := 'X'              -- DACLRCK
+			audio_0_external_interface_DACLRCK               : in    std_logic                     := 'X';             -- DACLRCK
+			audio_and_video_config_0_external_interface_SDAT : inout std_logic                     := 'X';             -- SDAT
+			audio_and_video_config_0_external_interface_SCLK : out   std_logic;                                        -- SCLK
+			clk_clk                                          : in    std_logic                     := 'X';             -- clk
+			rst_reset_n                                      : in    std_logic                     := 'X';             -- reset_n
+			audio_0_clk_clk                                  : in    std_logic                     := 'X';             -- clk
+			audio_0_reset_reset                              : in    std_logic                     := 'X';             -- reset
+			audio_pll_0_reset_source_reset                   : out   std_logic;                                        -- reset
+			audio_pll_0_audio_clk_clk                        : out   std_logic                                         -- clk
 		);
 	end component audio_driver;
 
-    signal data_lfsr : std_logic_vector(0 downto 0);
-    signal d_ready : std_logic;
-    signal d_valid : std_logic;
+    -- LFSR
+    signal lfsr_ready : std_logic;
+    signal lfsr_ready_fir : std_logic;
+    signal lfsr_valid : std_logic;
+    signal lfsr_data : std_logic_vector(0 downto 0);
+    signal lfsr_raw_data : std_logic_vector(31 downto 0);
 
-    signal next_ready_l : std_logic;
-    signal next_ready_r : std_logic;
-    signal next_valid : std_logic;
+    -- FIR
+    signal fir_valid : std_logic;
+    signal fir_ready : std_logic;
+    signal fir_data : sfixed(11 downto -12);
 
-    signal data_out : std_logic_vector(23 downto 0);
+    -- DAC
+    signal dac_valid : std_logic;
+    signal dac_ready_left : std_logic;
+    signal dac_ready_right : std_logic;
+    signal dac_data : std_logic_vector(23 downto 0);
+
+    -- Mux
+    signal random_counter : std_logic_vector(23 downto 0) := (others => '0');
+    signal random_counter2 : std_logic_vector(23 downto 0) := (others => '0');
+    signal mux_sel  : std_logic_vector(1 downto 0) := (others => '0');
+
+    -- Reset counter
+    signal reset_counter : unsigned(31 downto 0) := to_unsigned(50000000, 32);
+    signal rst_n : std_logic := '0';
+
+    -- Audio PLL
+    signal audio_clk : std_logic;
+    signal audio_rst : std_logic;
+
 
 begin
+
+    -- Turn off seven segment display
+    HEX0_N <= (others => '1');
+    HEX1_N <= (others => '1');
+    HEX2_N <= (others => '1');
+    HEX3_N <= (others => '1');
+    HEX4_N <= (others => '1');
+    HEX5_N <= (others => '1');
+    
+    -- Create mux
+    mux_sel <= SW(1 downto 0);
+    LEDR(1 downto 0) <= mux_sel;
+    LEDR(3 downto 2) <= dac_ready_left & dac_ready_right;
+
+    -- Set audio clock for wolfson module
+    AUD_XCK <= audio_clk;
+
+    -- Set GPIO pins for debugging
+    GPIO_1(0) <= FPGA_I2C_SDAT;
+    GPIO_1(1) <= FPGA_I2C_SCLK;
+
+    GPIO_1(2) <= dac_valid;
+    GPIO_1(3) <= dac_ready_left;
+    GPIO_1(4) <= dac_ready_right;
+
+    GPIO_1(5) <= AUD_BCLK;
+    GPIO_1(6) <= AUD_DACLRCK;
+    GPIO_1(7) <= rst_n;
+	GPIO_1(8) <= KEY_N(0);
+    GPIO_1(9) <= audio_clk;
+    GPIO_1(10) <= audio_rst;
+    GPIO_1(11) <= AUD_XCK;
 
     LFSR_DUT : entity work.lfsr(rtl)
     generic map (
@@ -201,9 +264,12 @@ begin
     )
     port map (
         clk => CLOCK_50,
-        d_ready => d_ready,
-        d_valid => d_valid,
-        data => data_lfsr
+        rst_n => rst_n,
+
+        d_ready => lfsr_ready,
+        d_valid => lfsr_valid,
+        data => lfsr_data,
+        raw_data => lfsr_raw_data
     );
 
     FIR_DUT : entity work.fir(rtl)
@@ -212,31 +278,95 @@ begin
     )
     port map (
         clk => CLOCK_50,
+        rst_n => rst_n,
 
-        prev_ready => d_ready,
-        prev_valid => d_valid,
-        data_in => data_lfsr,
+        prev_ready => lfsr_ready_fir,
+        prev_valid => lfsr_valid,
+        data_in => lfsr_data,
 
-        next_ready => next_ready_l and next_ready_r,
-        next_valid => next_valid,
-        data_out => data_out
+        next_ready => fir_ready,
+        next_valid => fir_valid,
+        data_out => fir_data
     );
+
+    RANDOM_PROC : process(CLOCK_50)
+    begin
+        if rising_edge(CLOCK_50) then
+            random_counter <= std_logic_vector(unsigned(random_counter) + 13);
+        end if;
+    end process;
+
+    RANDOM2_PROC : process(CLOCK_50)
+    begin
+        if rising_edge(CLOCK_50) then
+            random_counter2 <= std_logic_vector(unsigned(random_counter2) + 97);
+        end if;
+    end process;
+
+    RESET_PROC : process(CLOCK_50)
+    begin
+        if rising_edge(CLOCK_50) then
+            if reset_counter > 0 then
+                reset_counter <= reset_counter - 1;
+                rst_n <= '0';
+            else
+                rst_n <= '1';
+            end if;
+
+            if KEY_N(0) = '0' then
+                reset_counter <=  to_unsigned(50000000, 32);
+            end if;
+
+        end if;
+    end process;
+    
+
+    OUTPUT_PROC : process(CLOCK_50)
+    begin
+        if rising_edge(CLOCK_50) then
+            case mux_sel is
+            
+                when "00" =>
+                    dac_data <= random_counter;
+                    dac_valid <= '1';
+                when "01" =>                    
+                    dac_data <= lfsr_raw_data(23 downto 0);
+                    dac_valid <= lfsr_valid;
+                    lfsr_ready <= dac_ready_left and dac_ready_right;
+                when "10" =>
+                    dac_data <= std_logic_vector(fir_data(3 downto -12)) & X"00";
+                    dac_valid <= fir_valid;
+                    fir_ready <= dac_ready_left and dac_ready_right;
+                    lfsr_ready <= lfsr_ready_fir;
+                when "11" =>
+                    dac_data <= random_counter2;
+                    dac_valid <= '1';
+                when others =>
+            
+            end case;
+        end if;
+    end process;
+
 
     AUDIO_INST : component audio_driver
 		port map (
-			audio_0_avalon_right_channel_sink_data           => data_out,           --           audio_0_avalon_right_channel_sink.data
-			audio_0_avalon_right_channel_sink_valid          => next_valid,          --                                            .valid
-			audio_0_avalon_right_channel_sink_ready          => next_ready_r,          --                                            .ready
-			audio_0_avalon_left_channel_sink_data            => data_out,            --            audio_0_avalon_left_channel_sink.data
-			audio_0_avalon_left_channel_sink_valid           => next_valid,           --                                            .valid
-			audio_0_avalon_left_channel_sink_ready           => next_ready_l,           --                                            .ready
-			clk_clk                                          => CLOCK_50,                                          --                                         clk.clk
-			rst_reset_n                                      => '1',                                      --                                         rst.reset_n
-			audio_and_video_config_0_external_interface_SDAT => FPGA_I2C_SDAT, -- audio_and_video_config_0_external_interface.SDAT
-			audio_and_video_config_0_external_interface_SCLK => FPGA_I2C_SCLK, --                                            .SCLK
-			audio_0_external_interface_BCLK                  => AUD_BCLK,                  --                  audio_0_external_interface.BCLK
-			audio_0_external_interface_DACDAT                => AUD_DACDAT,                --                                            .DACDAT
-			audio_0_external_interface_DACLRCK               => AUD_DACLRCK                --                                            .DACLRCK
+			audio_0_avalon_left_channel_sink_data            => dac_data,           --            audio_0_avalon_left_channel_sink.data
+			audio_0_avalon_left_channel_sink_valid           => dac_valid,          --                                            .valid
+			audio_0_avalon_left_channel_sink_ready           => dac_ready_right,    --                                            .ready
+			audio_0_avalon_right_channel_sink_data           => dac_data,           --           audio_0_avalon_right_channel_sink.data
+			audio_0_avalon_right_channel_sink_valid          => dac_valid,          --                                            .valid
+			audio_0_avalon_right_channel_sink_ready          => dac_ready_left,     --                                            .ready
+			audio_0_external_interface_BCLK                  => AUD_BCLK,           --                  audio_0_external_interface.BCLK
+			audio_0_external_interface_DACDAT                => AUD_DACDAT,         --                                            .DACDAT
+			audio_0_external_interface_DACLRCK               => AUD_DACLRCK,        --                                            .DACLRCK
+            audio_and_video_config_0_external_interface_SDAT => FPGA_I2C_SDAT,      -- audio_and_video_config_0_external_interface.SDAT
+			audio_and_video_config_0_external_interface_SCLK => FPGA_I2C_SCLK,      --                                            .SCLK
+			clk_clk                                          => CLOCK_50,           --                                         clk.clk
+			rst_reset_n                                      => KEY_N(0),           --                                         rst.reset_n
+			audio_0_clk_clk                                  => audio_clk,          --                                 audio_0_clk.clk
+			audio_0_reset_reset                              => audio_rst,          --                               audio_0_reset.reset
+			audio_pll_0_reset_source_reset                   => audio_rst,          --                    audio_pll_0_reset_source.reset
+			audio_pll_0_audio_clk_clk                        => audio_clk           --                       audio_pll_0_audio_clk.clk
 		);
 
 end;

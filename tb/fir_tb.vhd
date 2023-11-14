@@ -9,16 +9,20 @@ library vunit_lib;
 context vunit_lib.vunit_context;
 context vunit_lib.com_context;
 
+library ieee_proposed;
+use ieee_proposed.fixed_pkg.all;
+
 entity fir_tb is
     generic(runner_cfg : string);
 end fir_tb;
 
 architecture sim of fir_tb is
 
-    constant clk_hz : integer := 100e6;
+    constant clk_hz : integer := 50e6;
     constant clk_period : time := 1 sec / clk_hz;
 
     signal clk : std_logic := '1';
+    signal rst_n : std_logic := '0';
 
     signal prev_ready : std_logic;
     signal prev_valid : std_logic;
@@ -26,7 +30,7 @@ architecture sim of fir_tb is
 
     signal next_ready : std_logic;
     signal next_valid : std_logic;
-    signal data_out : std_logic_vector(23 downto 0);
+    signal data_out : sfixed(10 downto -13);
 
 begin
 
@@ -38,6 +42,7 @@ begin
     )
     port map (
         clk => clk,
+        rst_n => rst_n,
 
         prev_ready => prev_ready,
         prev_valid => prev_valid,
@@ -53,6 +58,7 @@ begin
         wait for clk_period * 2;
 
         next_ready <= '1';
+        rst_n <= '1';
 
         wait for clk_period * 10;
 

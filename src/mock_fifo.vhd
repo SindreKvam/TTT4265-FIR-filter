@@ -1,0 +1,59 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity mock_fifo is
+    port (
+        clk : in std_logic;
+        rst_n : in std_logic;
+
+        data : in std_logic := '0';
+        valid : in std_logic := '0';
+        ready : out std_logic
+    );
+end mock_fifo;
+
+architecture rtl of mock_fifo is
+
+    constant CLK_PERIODS_FOR_8K : integer := 6250;
+
+    signal data_counter : integer range 0 to 127 := 0;
+    signal counter_8k : integer range 0 to 8191 := CLK_PERIODS_FOR_8K - 1;
+
+begin
+
+    DATA_PROC : process(clk)
+
+        variable v_data_counter : integer;
+    begin
+        if rising_edge(clk) then
+
+            v_data_counter := data_counter;
+
+            if data_counter = 127 then
+                ready <= '0';
+            else
+                ready <= '1';
+
+                if valid = '1' then
+                    v_data_counter := v_data_counter + 1;
+                end if;
+
+            end if;
+
+            if counter_8k > 0 then
+                counter_8k <= counter_8k - 1;
+            else
+                if data_counter > 0 then
+                    v_data_counter := v_data_counter - 1;
+                end if;
+
+                counter_8k <= CLK_PERIODS_FOR_8K - 1;
+            end if;
+
+            data_counter <= v_data_counter;
+
+        end if;
+    end process;
+
+end architecture;

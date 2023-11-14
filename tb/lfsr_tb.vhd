@@ -15,14 +15,16 @@ end lfsr_tb;
 
 architecture sim of lfsr_tb is
 
-    constant clk_hz : integer := 25e6;
+    constant clk_hz : integer := 50e6;
     constant clk_period : time := 1 sec / clk_hz;
 
     constant N : integer := 32;
 
     signal clk : std_logic := '1';
-    signal d_ready : std_logic := '0';
-    signal d_valid : std_logic;
+    signal rst_n : std_logic := '0';
+
+    signal ready : std_logic := '0';
+    signal valid : std_logic;
     signal data : std_logic_vector(0 downto 0);
 
 begin
@@ -35,8 +37,10 @@ begin
     )
     port map (
         clk => clk,
-        d_ready => d_ready,
-        d_valid => d_valid,
+        rst_n => rst_n,
+
+        ready => ready,
+        valid => valid,
         data => data
     );
 
@@ -51,15 +55,15 @@ begin
 
 
         wait for clk_period;
-
-        d_ready <= '1';
-
-        wait for clk_period * 2;
-        d_ready <= '0';
+        rst_n <= '1';
+        ready <= '1';
 
         wait for clk_period * 2;
+        ready <= '0';
 
-        d_ready <= '1';
+        wait for clk_period * 2;
+
+        ready <= '1';
 
         wait for clk_period * 10;
 

@@ -266,8 +266,8 @@ begin
         clk => CLOCK_50,
         rst_n => rst_n,
 
-        d_ready => lfsr_ready,
-        d_valid => lfsr_valid,
+        ready => lfsr_ready,
+        valid => lfsr_valid,
         data => lfsr_data,
         raw_data => lfsr_raw_data
     );
@@ -332,11 +332,13 @@ begin
                 when "01" =>                    
                     dac_data <= lfsr_raw_data(23 downto 0);
                     dac_valid <= lfsr_valid;
-                    lfsr_ready <= dac_ready_left and dac_ready_right;
+                    lfsr_ready <= dac_ready_left;
                 when "10" =>
-                    dac_data <= std_logic_vector(fir_data(3 downto -12)) & X"00";
+                    -- In simulation it is found that 5 MSB are never used, move 4 of these values up to keep the signed bit
+                    --dac_data <= std_logic_vector(fir_data(7 downto -12)) & X"0";
+                    dac_data <= std_logic_vector(fir_data);
                     dac_valid <= fir_valid;
-                    fir_ready <= dac_ready_left and dac_ready_right;
+                    fir_ready <= dac_ready_left;
                     lfsr_ready <= lfsr_ready_fir;
                 when "11" =>
                     dac_data <= random_counter2;
@@ -352,10 +354,10 @@ begin
 		port map (
 			audio_0_avalon_left_channel_sink_data            => dac_data,           --            audio_0_avalon_left_channel_sink.data
 			audio_0_avalon_left_channel_sink_valid           => dac_valid,          --                                            .valid
-			audio_0_avalon_left_channel_sink_ready           => dac_ready_right,    --                                            .ready
-			audio_0_avalon_right_channel_sink_data           => dac_data,           --           audio_0_avalon_right_channel_sink.data
-			audio_0_avalon_right_channel_sink_valid          => dac_valid,          --                                            .valid
-			audio_0_avalon_right_channel_sink_ready          => dac_ready_left,     --                                            .ready
+			audio_0_avalon_left_channel_sink_ready           => dac_ready_left,    --                                            .ready
+			audio_0_avalon_right_channel_sink_data           => (others => '0'),           --           audio_0_avalon_right_channel_sink.data
+			audio_0_avalon_right_channel_sink_valid          => '1',          --                                            .valid
+			audio_0_avalon_right_channel_sink_ready          => open,     --                                            .ready
 			audio_0_external_interface_BCLK                  => AUD_BCLK,           --                  audio_0_external_interface.BCLK
 			audio_0_external_interface_DACDAT                => AUD_DACDAT,         --                                            .DACDAT
 			audio_0_external_interface_DACLRCK               => AUD_DACLRCK,        --                                            .DACLRCK

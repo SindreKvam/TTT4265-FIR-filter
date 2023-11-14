@@ -6,7 +6,7 @@
    version="1.0"
    description=""
    tags=""
-   categories="" />
+   categories="System" />
  <parameter name="bonusData"><![CDATA[bonusData 
 {
    element audio_0
@@ -41,6 +41,14 @@
          type = "int";
       }
    }
+   element clocked_audio_output_0
+   {
+      datum _sortIndex
+      {
+         value = "4";
+         type = "int";
+      }
+   }
 }
 ]]></parameter>
  <parameter name="clockCrossingAdapter" value="HANDSHAKE" />
@@ -55,7 +63,7 @@
  <parameter name="hideFromIPCatalog" value="false" />
  <parameter name="lockedInterfaceDefinition" value="" />
  <parameter name="maxAdditionalLatency" value="1" />
- <parameter name="projectName" value="" />
+ <parameter name="projectName" value="fir_filter.qpf" />
  <parameter name="sopcBorderPoints" value="false" />
  <parameter name="systemHash" value="0" />
  <parameter name="testBenchDutName" value="" />
@@ -72,24 +80,45 @@
    internal="audio_0.avalon_right_channel_sink"
    type="avalon_streaming"
    dir="end" />
+ <interface name="audio_0_clk" internal="audio_0.clk" type="clock" dir="end" />
  <interface
    name="audio_0_external_interface"
    internal="audio_0.external_interface"
    type="conduit"
    dir="end" />
+ <interface name="audio_0_reset" internal="audio_0.reset" type="reset" dir="end" />
  <interface
    name="audio_and_video_config_0_external_interface"
    internal="audio_and_video_config_0.external_interface"
    type="conduit"
    dir="end" />
+ <interface
+   name="audio_pll_0_audio_clk"
+   internal="audio_pll_0.audio_clk"
+   type="clock"
+   dir="start" />
+ <interface
+   name="audio_pll_0_reset_source"
+   internal="audio_pll_0.reset_source"
+   type="reset"
+   dir="start" />
  <interface name="clk" internal="clk_0.clk_in" type="clock" dir="end" />
+ <interface
+   name="clocked_audio_output_0_conduit_aes_audio"
+   internal="clocked_audio_output_0.conduit_aes_audio" />
+ <interface
+   name="clocked_audio_output_0_conduit_control"
+   internal="clocked_audio_output_0.conduit_control" />
+ <interface
+   name="clocked_audio_output_0_din"
+   internal="clocked_audio_output_0.din" />
  <interface name="rst" internal="clk_0.clk_in_reset" type="reset" dir="end" />
  <module
    name="audio_0"
    kind="altera_up_avalon_audio"
    version="18.0"
    enabled="1">
-  <parameter name="AUTO_CLK_CLOCK_RATE" value="12288135" />
+  <parameter name="AUTO_CLK_CLOCK_RATE" value="0" />
   <parameter name="AUTO_DEVICE_FAMILY" value="Cyclone V" />
   <parameter name="audio_in" value="false" />
   <parameter name="audio_out" value="true" />
@@ -101,7 +130,7 @@
    kind="altera_up_avalon_audio_and_video_config"
    version="18.0"
    enabled="1">
-  <parameter name="AUTO_CLK_CLOCK_RATE" value="12288135" />
+  <parameter name="AUTO_CLK_CLOCK_RATE" value="50000000" />
   <parameter name="AUTO_DEVICE_FAMILY" value="Cyclone V" />
   <parameter name="audio_in" value="Microphone to ADC" />
   <parameter name="bit_length" value="24" />
@@ -135,16 +164,30 @@
   <parameter name="inputClockFrequency" value="0" />
   <parameter name="resetSynchronousEdges" value="NONE" />
  </module>
+ <module
+   name="clocked_audio_output_0"
+   kind="clocked_audio_output"
+   version="20.1"
+   enabled="0">
+  <parameter name="FAMILY" value="Cyclone V" />
+  <parameter name="G_CAO_FIFO_DEPTH" value="5" />
+  <parameter name="G_CAO_INCLUDE_CTRL_REG" value="0" />
+ </module>
  <connection
    kind="clock"
    version="20.1"
    start="audio_pll_0.audio_clk"
-   end="audio_0.clk" />
+   end="clocked_audio_output_0.din_clock" />
  <connection
    kind="clock"
    version="20.1"
-   start="audio_pll_0.audio_clk"
+   start="clk_0.clk"
    end="audio_and_video_config_0.clk" />
+ <connection
+   kind="clock"
+   version="20.1"
+   start="clk_0.clk"
+   end="clocked_audio_output_0.control_clock" />
  <connection
    kind="clock"
    version="20.1"
@@ -154,17 +197,22 @@
    kind="reset"
    version="20.1"
    start="clk_0.clk_reset"
+   end="clocked_audio_output_0.control_clock_reset" />
+ <connection
+   kind="reset"
+   version="20.1"
+   start="clk_0.clk_reset"
    end="audio_pll_0.ref_reset" />
  <connection
    kind="reset"
    version="20.1"
-   start="audio_pll_0.reset_source"
-   end="audio_0.reset" />
+   start="clk_0.clk_reset"
+   end="audio_and_video_config_0.reset" />
  <connection
    kind="reset"
    version="20.1"
    start="audio_pll_0.reset_source"
-   end="audio_and_video_config_0.reset" />
+   end="clocked_audio_output_0.din_clock_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
  <interconnectRequirement for="$system" name="qsys_mm.enableEccProtection" value="FALSE" />
  <interconnectRequirement for="$system" name="qsys_mm.insertDefaultSlave" value="FALSE" />

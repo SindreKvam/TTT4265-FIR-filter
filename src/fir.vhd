@@ -2,20 +2,25 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library ieee_proposed;
+use ieee_proposed.fixed_float_types.all; -- ieee_proposed for VHDL-93 version
+use ieee_proposed.fixed_pkg.all; -- ieee_proposed for compatibility version
+
 entity fir is
     generic (
-        FIR_LENGTH : integer := 256
+        FIR_LENGTH : integer
     );
     port (
         clk : in std_logic;
-        
+        rst_n : in std_logic;
+
         prev_ready : out std_logic;
         prev_valid : in std_logic;
         data_in : in std_logic_vector(0 downto 0);
 
         next_ready : in std_logic;
         next_valid : out std_logic;
-        data_out : out std_logic_vector(23 downto 0)
+        data_out : out sfixed(11 downto -12)
     );
 end fir;
 
@@ -24,29 +29,31 @@ architecture rtl of fir is
     type T_STATE is (IDLE, SHIFT_DATA_IN, CALCULATE, HOLD_DATA_OUT);
     signal state : T_STATE := IDLE;
 
-    type T_DATA is array(0 to FIR_LENGTH - 1) of std_logic_vector(0 downto 0); -- 2 bit
+    type T_DATA is array(0 to FIR_LENGTH - 1) of std_logic_vector(0 downto 0); -- 1 bit
     signal delay_line : T_DATA := (others => (others => '0'));
-    --signal delay_line : std_logic_vector(0 to FIR_LENGTH - 1) := (others => '0');
 
-    type T_COEFF is array(0 to FIR_LENGTH - 1) of signed(8 downto 0); -- 9 bit
-    signal coeff : T_COEFF :=  ('1'&x"90", '0'&x"53", '0'&x"05", '1'&x"A4", '0'&x"6E", '1'&x"CF", '1'&x"CE", '0'&x"6F", '1'&x"A4", '0'&x"04", '0'&x"56", '1'&x"8D", '0'&x"3A", '0'&x"28", '1'&x"91", '0'&x"63", 
-                                '1'&x"F0", '1'&x"AF", '0'&x"75", '1'&x"BB", '1'&x"E0", '0'&x"6C", '1'&x"95", '0'&x"19", '0'&x"49", '1'&x"88", '0'&x"4D", '0'&x"15", '1'&x"96", '0'&x"70", '1'&x"DB", '1'&x"BE", 
-                                '0'&x"78", '1'&x"A9", '1'&x"F5", '0'&x"64", '1'&x"8A", '0'&x"2F", '0'&x"39", '1'&x"87", '0'&x"5F", '1'&x"FF", '1'&x"A0", '0'&x"79", '1'&x"C5", '1'&x"D0", '0'&x"77", '1'&x"98", 
-                                '0'&x"0B", '0'&x"59", '1'&x"83", '0'&x"44", '0'&x"25", '1'&x"8A", '0'&x"6E", '1'&x"E9", '1'&x"AE", '0'&x"7E", '1'&x"B1", '1'&x"E4", '0'&x"71", '1'&x"8B", '0'&x"22", '0'&x"49", 
-                                '1'&x"80", '0'&x"58", '0'&x"10", '1'&x"93", '0'&x"7A", '1'&x"D2", '1'&x"BF", '0'&x"7F", '1'&x"9E", '1'&x"FB", '0'&x"67", '1'&x"81", '0'&x"38", '0'&x"36", '1'&x"81", '0'&x"69", 
-                                '1'&x"F8", '1'&x"9F", '0'&x"81", '1'&x"BC", '1'&x"D4", '0'&x"7B", '1'&x"8F", '0'&x"13", '0'&x"58", '1'&x"7C", '0'&x"4D", '0'&x"20", '1'&x"88", '0'&x"76", '1'&x"E1", '1'&x"B0", 
-                                '0'&x"84", '1'&x"A8", '1'&x"EA", '0'&x"72", '1'&x"83", '0'&x"2A", '0'&x"46", '1'&x"7C", '0'&x"60", '0'&x"09", '1'&x"93", '0'&x"80", '1'&x"CA", '1'&x"C3", '0'&x"82", '1'&x"97", 
-                                '0'&x"02", '0'&x"65", '1'&x"7C", '0'&x"40", '0'&x"31", '1'&x"80", '0'&x"6F", '1'&x"F1", '1'&x"A2", '0'&x"84", '1'&x"B5", '1'&x"D9", '0'&x"7B", '1'&x"89", '0'&x"1A", '0'&x"54", 
-                                '1'&x"7A", '0'&x"54", '0'&x"1A", '1'&x"89", '0'&x"7B", '1'&x"D9", '1'&x"B5", '0'&x"84", '1'&x"A2", '1'&x"F1", '0'&x"6F", '1'&x"80", '0'&x"31", '0'&x"40", '1'&x"7C", '0'&x"65", 
-                                '0'&x"02", '1'&x"97", '0'&x"82", '1'&x"C3", '1'&x"CA", '0'&x"80", '1'&x"93", '0'&x"09", '0'&x"60", '1'&x"7C", '0'&x"46", '0'&x"2A", '1'&x"83", '0'&x"72", '1'&x"EA", '1'&x"A8", 
-                                '0'&x"84", '1'&x"B0", '1'&x"E1", '0'&x"76", '1'&x"88", '0'&x"20", '0'&x"4D", '1'&x"7C", '0'&x"58", '0'&x"13", '1'&x"8F", '0'&x"7B", '1'&x"D4", '1'&x"BC", '0'&x"81", '1'&x"9F", 
-                                '1'&x"F8", '0'&x"69", '1'&x"81", '0'&x"36", '0'&x"38", '1'&x"81", '0'&x"67", '1'&x"FB", '1'&x"9E", '0'&x"7F", '1'&x"BF", '1'&x"D2", '0'&x"7A", '1'&x"93", '0'&x"10", '0'&x"58", 
-                                '1'&x"80", '0'&x"49", '0'&x"22", '1'&x"8B", '0'&x"71", '1'&x"E4", '1'&x"B1", '0'&x"7E", '1'&x"AE", '1'&x"E9", '0'&x"6E", '1'&x"8A", '0'&x"25", '0'&x"44", '1'&x"83", '0'&x"59", 
-                                '0'&x"0B", '1'&x"98", '0'&x"77", '1'&x"D0", '1'&x"C5", '0'&x"79", '1'&x"A0", '1'&x"FF", '0'&x"5F", '1'&x"87", '0'&x"39", '0'&x"2F", '1'&x"8A", '0'&x"64", '1'&x"F5", '1'&x"A9", 
-                                '0'&x"78", '1'&x"BE", '1'&x"DB", '0'&x"70", '1'&x"96", '0'&x"15", '0'&x"4D", '1'&x"88", '0'&x"49", '0'&x"19", '1'&x"95", '0'&x"6C", '1'&x"E0", '1'&x"BB", '0'&x"75", '1'&x"AF", 
-                                '1'&x"F0", '0'&x"63", '1'&x"91", '0'&x"28", '0'&x"3A", '1'&x"8D", '0'&x"56", '0'&x"04", '1'&x"A4", '0'&x"6F", '1'&x"CE", '1'&x"CF", '0'&x"6E", '1'&x"A4", '0'&x"05", '0'&x"53");
+    type T_COEFF is array(0 to FIR_LENGTH - 1) of sfixed(5 downto -16); -- 22 bit
+    signal coeff : T_COEFF :=  ("11"&x"21D32", "00"&x"A6B9C", "00"&x"0B968", "11"&x"49A09", "00"&x"DC0BE", "11"&x"9FCF9", "11"&x"9CF74", "00"&x"DE835", "11"&x"48E42", "00"&x"08ECB", "00"&x"ACB90", "11"&x"1BA10", "00"&x"747A2", "00"&x"51936", "11"&x"2353B", "00"&x"C64D5", 
+                                "11"&x"E1E47", "11"&x"5EF97", "00"&x"EAC26", "11"&x"77A59", "11"&x"C14CD", "00"&x"D89D1", "11"&x"2BE8D", "00"&x"33BA2", "00"&x"935CD", "11"&x"10EAE", "00"&x"9B91E", "00"&x"2A977", "11"&x"2DAD3", "00"&x"E0460", "11"&x"B675D", "11"&x"7C280", 
+                                "00"&x"F13C1", "11"&x"521DB", "11"&x"EA8B3", "00"&x"C9D1C", "11"&x"15551", "00"&x"5F4B5", "00"&x"729AC", "11"&x"0EDC8", "00"&x"BF0F3", "11"&x"FF842", "11"&x"40D9D", "00"&x"F31C3", "11"&x"8B43A", "11"&x"A0314", "00"&x"EEBE9", "11"&x"3120E",
+                                "00"&x"16FDD", "00"&x"B263A", "11"&x"0689E", "00"&x"899BF", "00"&x"4BA31", "11"&x"15F78", "00"&x"DD1BF", "11"&x"D22E6", "11"&x"5C5AD", "00"&x"FD9B4", "11"&x"62563", "11"&x"C9B37", "00"&x"E3038", "11"&x"166B8", "00"&x"44B57", "00"&x"930CD",
+                                "11"&x"008A7", "00"&x"B0A75", "00"&x"20046", "11"&x"2645B", "00"&x"F41C7", "11"&x"A4993", "11"&x"7F3CA", "00"&x"FEF5C", "11"&x"3DA72", "11"&x"F6F82", "00"&x"CE3ED", "11"&x"03726", "00"&x"71A2C", "00"&x"6CF77", "11"&x"03EB1", "00"&x"D2861",
+                                "11"&x"F1971", "11"&x"3F554", "01"&x"02C84", "11"&x"78D8A", "11"&x"A8227", "00"&x"F6D34", "11"&x"1F049", "00"&x"260B6", "00"&x"B11EB", "10"&x"F94C4", "00"&x"9BB44", "00"&x"41AEC", "11"&x"10C68", "00"&x"ED8A5", "11"&x"C263E", "11"&x"603D9",
+                                "01"&x"083EA", "11"&x"50F40", "11"&x"D557C", "00"&x"E557A", "11"&x"07F5A", "00"&x"54D70", "00"&x"8CC3A", "10"&x"F8A07", "00"&x"C0F45", "00"&x"130A4", "11"&x"26BA6", "01"&x"00594", "11"&x"9486E", "11"&x"87AA1", "01"&x"0414A", "11"&x"2EC84", 
+                                "00"&x"04E86", "00"&x"CB227", "10"&x"F9A3C", "00"&x"8140A", "00"&x"62B1A", "11"&x"019BB", "00"&x"DFA58", "11"&x"E3143", "11"&x"44EB9", "01"&x"09FF7", "11"&x"6A113", "11"&x"B3EC7", "00"&x"F65C8", "11"&x"13ECC", "00"&x"34BB7", "00"&x"A947B",
+                                "10"&x"F4C8C", "00"&x"A947B", "00"&x"34BB7", "11"&x"13ECC", "00"&x"F65C8", "11"&x"B3EC7", "11"&x"6A113", "01"&x"09FF7", "11"&x"44EB9", "11"&x"E3143", "00"&x"DFA58", "11"&x"019BB", "00"&x"62B1A", "00"&x"8140A", "10"&x"F9A3C", "00"&x"CB227",
+                                "00"&x"04E86", "11"&x"2EC84", "01"&x"0414A", "11"&x"87AA1", "11"&x"9486E", "01"&x"00594", "11"&x"26BA6", "00"&x"130A4", "00"&x"C0F45", "10"&x"F8A07", "00"&x"8CC3A", "00"&x"54D70", "11"&x"07F5A", "00"&x"E557A", "11"&x"D557C", "11"&x"50F40",
+                                "01"&x"083EA", "11"&x"603D9", "11"&x"C263E", "00"&x"ED8A5", "11"&x"10C68", "00"&x"41AEC", "00"&x"9BB44", "10"&x"F94C4", "00"&x"B11EB", "00"&x"260B6", "11"&x"1F049", "00"&x"F6D34", "11"&x"A8227", "11"&x"78D8A", "01"&x"02C84", "11"&x"3F554",
+                                "11"&x"F1971", "00"&x"D2861", "11"&x"03EB1", "00"&x"6CF77", "00"&x"71A2C", "11"&x"03726", "00"&x"CE3ED", "11"&x"F6F82", "11"&x"3DA72", "00"&x"FEF5C", "11"&x"7F3CA", "11"&x"A4993", "00"&x"F41C7", "11"&x"2645B", "00"&x"20046", "00"&x"B0A75", 
+                                "11"&x"008A7", "00"&x"930CD", "00"&x"44B57", "11"&x"166B8", "00"&x"E3038", "11"&x"C9B37", "11"&x"62563", "00"&x"FD9B4", "11"&x"5C5AD", "11"&x"D22E6", "00"&x"DD1BF", "11"&x"15F78", "00"&x"4BA31", "00"&x"899BF", "11"&x"0689E", "00"&x"B263A",
+                                "00"&x"16FDD", "11"&x"3120E", "00"&x"EEBE9", "11"&x"A0314", "11"&x"8B43A", "00"&x"F31C3", "11"&x"40D9D", "11"&x"FF842", "00"&x"BF0F3", "11"&x"0EDC8", "00"&x"729AC", "00"&x"5F4B5", "11"&x"15551", "00"&x"C9D1C", "11"&x"EA8B3", "11"&x"521DB",
+                                "00"&x"F13C1", "11"&x"7C280", "11"&x"B675D", "00"&x"E0460", "11"&x"2DAD3", "00"&x"2A977", "00"&x"9B91E", "11"&x"10EAE", "00"&x"935CD", "00"&x"33BA2", "11"&x"2BE8D", "00"&x"D89D1", "11"&x"C14CD", "11"&x"77A59", "00"&x"EAC26", "11"&x"5EF97",
+                                "11"&x"E1E47", "00"&x"C64D5", "11"&x"2353B", "00"&x"51936", "00"&x"747A2", "11"&x"1BA10", "00"&x"ACB90", "00"&x"08ECB", "11"&x"48E42", "00"&x"DE835", "11"&x"9CF74", "11"&x"9FCF9", "00"&x"DC0BE", "11"&x"49A09", "00"&x"0B968", "00"&x"A6B9C");
 
-    signal accumulator : signed(23 downto 0) := (others => '0');
+    signal accumulator : sfixed(11 downto -12) := (others => '0');
+    -- 12 bit because max sum is 1286.28
+    --signal accumulator : signed(23 downto 0) := (others => '0');
+    signal sfixed_data_in : sfixed(0 downto 0) := (others => '0');
 
     signal tap_counter : unsigned(11 downto 0) := (others => '0');
     
@@ -57,6 +64,10 @@ begin
 
         variable v_prev_ready : std_logic := '0';
         variable v_next_valid : std_logic := '0';
+        variable v_index : integer range 0 to FIR_LENGTH * 2 - 1 := 0;
+        variable v_coeff : sfixed(5 downto -16);
+        variable v_delay_line : sfixed(0 downto 0);
+        variable v_mult_result : sfixed(10 downto -12);
 
     begin
         
@@ -65,55 +76,70 @@ begin
             -- Default values
             v_prev_ready := '0';
             v_next_valid := '0';
-            
-            case state is
 
-                -------------------------------
-                when IDLE =>
+            if rst_n = '0' then
+
+                state <= IDLE;
+                
+            else
+                
+                case state is
+
                     -------------------------------
-                    v_prev_ready := '1';
+                    when IDLE =>
+                        -------------------------------
+                        v_prev_ready := '1';
 
-                    if prev_valid = '1' then
-                        state <= SHIFT_DATA_IN;
-                        v_prev_ready := '0';
-                    end if;
+                        if prev_valid = '1' then
+                            state <= SHIFT_DATA_IN;
+                            v_prev_ready := '0';
+                        end if;
 
-                -------------------------------
-                when SHIFT_DATA_IN =>
                     -------------------------------
-                    delay_line <= data_in & delay_line(delay_line'low to delay_line'high - 1);
+                    when SHIFT_DATA_IN =>
+                        -------------------------------
+                        delay_line <= data_in & delay_line(delay_line'low to delay_line'high - 1);
 
-                    -- Get accumulator ready
-                    accumulator <=  (others => '0');
-                    state <= CALCULATE;
+                        -- Get accumulator ready
+                        accumulator <=  (others => '0');
+                        state <= CALCULATE;
 
 
-                -------------------------------
-                when CALCULATE =>
                     -------------------------------
+                    when CALCULATE =>
+                        -------------------------------
 
-                    accumulator <= accumulator + (coeff(to_integer(tap_counter)) * signed(delay_line(to_integer(tap_counter))(0 downto 0)));
+                        v_index := to_integer(tap_counter);
 
-                    if (tap_counter < FIR_LENGTH - 1) then
-                        tap_counter <= tap_counter + 1;
-                    else
-                        tap_counter <= (others => '0');
-                        state <= HOLD_DATA_OUT;
-                    end if;
+                        v_coeff := coeff(v_index);
+                        v_delay_line := to_sfixed(delay_line(v_index)(0 downto 0), v_delay_line);
 
-                -------------------------------
-                when HOLD_DATA_OUT =>
+                        v_mult_result := resize(v_coeff * v_delay_line, v_mult_result);
+
+
+                        accumulator <= resize(accumulator + v_mult_result, accumulator); --signed(-1, 1)
+
+                        if (tap_counter < FIR_LENGTH - 1) then
+                            tap_counter <= tap_counter + 1;
+                        else
+                            tap_counter <= (others => '0');
+                            state <= HOLD_DATA_OUT;
+                        end if;
+
                     -------------------------------
-                    v_next_valid := '1';
+                    when HOLD_DATA_OUT =>
+                        -------------------------------
+                        v_next_valid := '1';
 
-                    data_out <= std_logic_vector(accumulator);
-                    
-                    if next_ready = '1' then
-                        v_next_valid := '0';
-                        state <= IDLE;
-                    end if;
+                        data_out <= accumulator;
+                        
+                        if next_ready = '1' then
+                            state <= IDLE;
+                        end if;
 
-            end case;
+                end case;
+
+            end if;
 
             prev_ready <= v_prev_ready;
             next_valid <= v_next_valid;

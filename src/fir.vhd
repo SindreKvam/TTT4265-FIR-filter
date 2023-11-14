@@ -92,7 +92,6 @@ begin
 
                         if prev_valid = '1' then
                             state <= SHIFT_DATA_IN;
-                            v_prev_ready := '0';
                         end if;
 
                     -------------------------------

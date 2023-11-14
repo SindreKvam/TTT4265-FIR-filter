@@ -15,7 +15,8 @@ entity lfsr is
 
         d_ready : in std_logic;
         d_valid : out std_logic;
-        data : out std_logic_vector(0 downto 0) := (others => '1')
+        data : out std_logic_vector(0 downto 0) := (others => '1');
+        raw_data : out std_logic_vector(31 downto 0)
     );
 end lfsr;
 
@@ -29,6 +30,7 @@ begin
 
     -- Unclocked output
     data(0) <= r_lfsr(1);
+    raw_data <= r_lfsr(32 downto 1);
 
     w_poly  <= POLY;
     g_mask : for k in 32 downto 1 generate

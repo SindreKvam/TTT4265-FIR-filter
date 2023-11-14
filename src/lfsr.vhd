@@ -12,9 +12,10 @@ entity lfsr is
     );
     port (
         clk : in std_logic;
+        rst_n : in std_logic;
 
-        d_ready : in std_logic;
-        d_valid : out std_logic;
+        ready : in std_logic;
+        valid : out std_logic;
         data : out std_logic_vector(0 downto 0) := (others => '1');
         raw_data : out std_logic_vector(31 downto 0)
     );
@@ -26,11 +27,10 @@ architecture rtl of lfsr is
     signal w_mask : std_logic_vector(32 downto 1);
     signal w_poly : std_logic_vector(32 downto 1);
 
-begin
+    type T_STATE is (CALCULATE, HOLD_DATA_OUT);
+    signal state : T_STATE := CALCULATE;
 
-    -- Unclocked output
-    data(0) <= r_lfsr(1);
-    raw_data <= r_lfsr(32 downto 1);
+begin
 
     w_poly  <= POLY;
     g_mask : for k in 32 downto 1 generate
@@ -39,20 +39,52 @@ begin
     
 
     LFSR_PROC : process(clk)
+
+        variable v_valid : std_logic;
+
     begin
         if rising_edge(clk) then
 
-            if (d_ready = '1') then
-                -- LFSR logic
-                r_lfsr   <= '0' & r_lfsr(32 downto 2) xor w_mask;
-                d_valid  <= '1';
+            v_valid := '0';
+
+            if rst_n = '0' then
+
+                r_lfsr <= SEED;
+                state <= CALCULATE;
 
             else
-                d_valid <= '0';
+
+                case state is
+
+                    -------------------------------
+                    when CALCULATE =>
+                        -------------------------------
+
+                        r_lfsr <= '0' & r_lfsr(32 downto 2) xor w_mask;
+                        state <= HOLD_DATA_OUT;
+                    
+                    -------------------------------
+                    when HOLD_DATA_OUT =>
+                        -------------------------------
+
+                        data(0) <= r_lfsr(1);
+                        raw_data <= r_lfsr(32 downto 1);
+
+                        v_valid  := '1';
+
+                        if ready = '1' then
+                            state <= CALCULATE;
+                        end if;
+                
+                    when others =>
+                
+                end case;
 
             end if;
 
         end if;
+
+        valid <= v_valid;
         
     end process;
 

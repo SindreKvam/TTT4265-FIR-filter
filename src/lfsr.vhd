@@ -81,10 +81,9 @@ begin
                 end case;
 
             end if;
-
+            
+            valid <= v_valid;
         end if;
-
-        valid <= v_valid;
         
     end process;
 

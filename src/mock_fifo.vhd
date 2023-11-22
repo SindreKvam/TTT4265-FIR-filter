@@ -9,7 +9,9 @@ entity mock_fifo is
 
         data : in std_logic := '0';
         valid : in std_logic := '0';
-        ready : out std_logic
+        ready : out std_logic;
+
+        clk_8k : out std_logic
     );
 end mock_fifo;
 
@@ -25,10 +27,12 @@ begin
     DATA_PROC : process(clk)
 
         variable v_data_counter : integer;
+        variable v_clk          : std_logic;
     begin
         if rising_edge(clk) then
 
             v_data_counter := data_counter;
+            v_clk := '0';
 
             if data_counter = 127 then
                 ready <= '0';
@@ -49,8 +53,10 @@ begin
                 end if;
 
                 counter_8k <= CLK_PERIODS_FOR_8K - 1;
+                v_clk := '1';
             end if;
-
+            
+            clk_8k <= v_clk;
             data_counter <= v_data_counter;
 
         end if;

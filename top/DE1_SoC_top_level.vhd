@@ -202,7 +202,7 @@ architecture rtl of DE1_SoC_top_level is
     -- FIR
     signal fir_valid : std_logic;
     signal fir_ready : std_logic;
-    signal fir_data : sfixed(11 downto -12);
+    signal fir_data : sfixed(0 downto -23);
 
     -- DAC
     signal dac_valid : std_logic;
@@ -274,7 +274,7 @@ begin
 
     FIR_DUT : entity work.fir(rtl)
     generic map(
-        FIR_LENGTH => 256
+        FIR_LENGTH => 1024
     )
     port map (
         clk => CLOCK_50,
@@ -334,8 +334,6 @@ begin
                     dac_valid <= lfsr_valid;
                     lfsr_ready <= dac_ready_left;
                 when "10" =>
-                    -- In simulation it is found that 5 MSB are never used, move 4 of these values up to keep the signed bit
-                    --dac_data <= std_logic_vector(fir_data(7 downto -12)) & X"0";
                     dac_data <= std_logic_vector(fir_data);
                     dac_valid <= fir_valid;
                     fir_ready <= dac_ready_left;

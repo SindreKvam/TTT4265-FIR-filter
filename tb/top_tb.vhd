@@ -46,6 +46,7 @@ architecture sim of top_tb is
     signal clk_8k : std_logic;
 
     signal unsigned_data_out : unsigned(23 downto 0);
+    signal data_test : std_logic_vector(23 downto 0) := (others => '0');
 
 begin
 
@@ -77,7 +78,7 @@ begin
         data_in => data_lfsr, --fir_data_in,
 
         next_ready => next_ready,
-        next_valid => next_valid,
+        next_valid => open,
         data_out => data_out
     );
 
@@ -93,6 +94,17 @@ begin
         clk_8k => clk_8k
     );
     
+
+    SINE_GEN : entity work.sine(rtl) 
+    port map(
+        clk => clk,
+        rst_n => rst_n,
+
+        ready => next_ready,
+        valid => next_valid,
+        data  => data_test
+    );
+
     fir_data_in <= sine;
     unsigned_data_out <= unsigned(resize(data_out + to_sfixed(0.7083 , data_out), data_out)); -- resize(  * 2, unsigned_data_out)
 

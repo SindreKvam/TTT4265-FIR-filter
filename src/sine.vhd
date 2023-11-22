@@ -57,6 +57,7 @@ begin
 
                         state <= HOLD_DATA_OUT;
                         data  <= coeff(to_integer(phase));
+
                     -------------------------------
                     when HOLD_DATA_OUT =>
                         -------------------------------
@@ -68,7 +69,11 @@ begin
                             state <= CALCULATE;
                         end if;
                 
+                    -------------------------------
                     when others =>
+                        -------------------------------
+
+                        state <= CALCULATE;
                 
                 end case;
 

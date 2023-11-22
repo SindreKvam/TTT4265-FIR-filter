@@ -76,7 +76,10 @@ begin
                             state <= CALCULATE;
                         end if;
                 
+                    -------------------------------
                     when others =>
+                        -------------------------------
+                        state <= CALCULATE;
                 
                 end case;
 

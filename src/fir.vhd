@@ -185,6 +185,11 @@ begin
                             state <= IDLE;
                         end if;
 
+                    -------------------------------
+                    when others => 
+                        -------------------------------
+                        state <= IDLE;
+
                 end case;
 
             end if;

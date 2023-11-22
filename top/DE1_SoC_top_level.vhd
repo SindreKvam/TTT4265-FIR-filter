@@ -223,6 +223,10 @@ architecture rtl of DE1_SoC_top_level is
     signal audio_clk : std_logic;
     signal audio_rst : std_logic;
 
+    -- Sine gen
+    signal sine_valid : std_logic;
+    signal sine_ready : std_logic;
+    signal sine_data  : std_logic_vector(23 downto 0);
 
 begin
 
@@ -319,23 +323,37 @@ begin
 
         end if;
     end process;
+
+    SINE_GEN : entity work.sine(rtl) 
+    port map(
+        clk => CLOCK_50,
+        rst_n => rst_n,
+
+        ready => sine_ready,
+        valid => sine_valid,
+        data  => sine_data
+    );
     
 
     OUTPUT_PROC : process(CLOCK_50)
     begin
         if rising_edge(CLOCK_50) then
             case mux_sel is
+
+                -- There is an issue with the streaming interface
+                -- When using signals to set dac_valid, there seems to be times where valid signal isn't set.
             
                 when "00" =>
-                    dac_data <= random_counter;
-                    dac_valid <= '1';
+                    dac_data <= sine_data;
+                    dac_valid <= '1'; --sine_valid;
+                    sine_ready <= dac_ready_left;
                 when "01" =>                    
                     dac_data <= lfsr_raw_data(23 downto 0);
-                    dac_valid <= lfsr_valid;
+                    dac_valid <= '1'; --lfsr_valid;
                     lfsr_ready <= dac_ready_left;
                 when "10" =>
                     dac_data <= std_logic_vector(fir_data);
-                    dac_valid <= fir_valid;
+                    dac_valid <= '1'; --fir_valid;
                     fir_ready <= dac_ready_left;
                     lfsr_ready <= lfsr_ready_fir;
                 when "11" =>

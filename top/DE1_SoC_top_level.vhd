@@ -267,7 +267,7 @@ begin
         SEED => x"DEADBABE"
     )
     port map (
-        clk => CLOCK_50,
+        clk => audio_clk,
         rst_n => rst_n,
 
         ready => lfsr_ready,
@@ -281,7 +281,7 @@ begin
         FIR_LENGTH => 1024
     )
     port map (
-        clk => CLOCK_50,
+        clk => audio_clk,
         rst_n => rst_n,
 
         prev_ready => lfsr_ready_fir,
@@ -293,23 +293,23 @@ begin
         data_out => fir_data
     );
 
-    RANDOM_PROC : process(CLOCK_50)
+    RANDOM_PROC : process(audio_clk)
     begin
-        if rising_edge(CLOCK_50) then
+        if rising_edge(audio_clk) then
             random_counter <= std_logic_vector(unsigned(random_counter) + 13);
         end if;
     end process;
 
-    RANDOM2_PROC : process(CLOCK_50)
+    RANDOM2_PROC : process(audio_clk)
     begin
-        if rising_edge(CLOCK_50) then
+        if rising_edge(audio_clk) then
             random_counter2 <= std_logic_vector(unsigned(random_counter2) + 97);
         end if;
     end process;
 
-    RESET_PROC : process(CLOCK_50)
+    RESET_PROC : process(audio_clk)
     begin
-        if rising_edge(CLOCK_50) then
+        if rising_edge(audio_clk) then
             if reset_counter > 0 then
                 reset_counter <= reset_counter - 1;
                 rst_n <= '0';
@@ -326,7 +326,7 @@ begin
 
     SINE_GEN : entity work.sine(rtl) 
     port map(
-        clk => CLOCK_50,
+        clk => audio_clk,
         rst_n => rst_n,
 
         ready => sine_ready,
@@ -335,25 +335,22 @@ begin
     );
     
 
-    OUTPUT_PROC : process(CLOCK_50)
+    OUTPUT_PROC : process(audio_clk)
     begin
-        if rising_edge(CLOCK_50) then
+        if rising_edge(audio_clk) then
             case mux_sel is
-
-                -- There is an issue with the streaming interface
-                -- When using signals to set dac_valid, there seems to be times where valid signal isn't set.
             
                 when "00" =>
                     dac_data <= sine_data;
-                    dac_valid <= '1'; --sine_valid;
+                    dac_valid <= sine_valid;
                     sine_ready <= dac_ready_left;
                 when "01" =>                    
                     dac_data <= lfsr_raw_data(23 downto 0);
-                    dac_valid <= '1'; --lfsr_valid;
+                    dac_valid <= lfsr_valid;
                     lfsr_ready <= dac_ready_left;
                 when "10" =>
                     dac_data <= std_logic_vector(fir_data);
-                    dac_valid <= '1'; --fir_valid;
+                    dac_valid <= fir_valid;
                     fir_ready <= dac_ready_left;
                     lfsr_ready <= lfsr_ready_fir;
                 when "11" =>

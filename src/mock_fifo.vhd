@@ -17,10 +17,10 @@ end mock_fifo;
 
 architecture rtl of mock_fifo is
 
-    constant CLK_PERIODS_FOR_8K : integer := 6250;
+    constant CLK_PERIODS_FOR_48K : integer := 1042;
 
     signal data_counter : integer range 0 to 127 := 0;
-    signal counter_8k : integer range 0 to 8191 := CLK_PERIODS_FOR_8K - 1;
+    signal counter_48k : integer range 0 to 2047 := CLK_PERIODS_FOR_48K - 1;
 
 begin
 
@@ -45,14 +45,14 @@ begin
 
             end if;
 
-            if counter_8k > 0 then
-                counter_8k <= counter_8k - 1;
+            if counter_48k > 0 then
+                counter_48k <= counter_48k - 1;
             else
                 if data_counter > 0 then
                     v_data_counter := v_data_counter - 1;
                 end if;
 
-                counter_8k <= CLK_PERIODS_FOR_8K - 1;
+                counter_48k <= CLK_PERIODS_FOR_48K - 1;
                 v_clk := '1';
             end if;
             

@@ -8,7 +8,7 @@ T = 0.1
 F_c = 2880
 N = 100000
 
-F_s = 8000  # Lowest sample rate supported by DAC
+F_s = 48000
 F_s_inv = 1 / F_s
 
 FPGA_MULTIPLIER_NUM_BITS = 22

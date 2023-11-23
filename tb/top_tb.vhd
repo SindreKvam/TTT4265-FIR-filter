@@ -24,7 +24,7 @@ architecture sim of top_tb is
 
     -- Constants used to generate sine-wave
     constant f : real := 500.0;
-    constant f_s : real := 8000.0;
+    constant f_s : real := 48000.0;
     constant f_d : real := f / f_s;
     signal sine : std_logic_vector(0 downto 0);
 
@@ -121,7 +121,7 @@ begin
 
         rst_n <= '1';
 
-        wait for clk_period * 2e7;
+        wait for clk_period * 1e8;
 
         -------------------------------
         -- VUNIT cleanup

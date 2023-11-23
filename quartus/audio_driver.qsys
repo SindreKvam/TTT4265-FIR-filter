@@ -49,6 +49,14 @@
          type = "int";
       }
    }
+   element dc_fifo_0
+   {
+      datum _sortIndex
+      {
+         value = "5";
+         type = "int";
+      }
+   }
 }
 ]]></parameter>
  <parameter name="clockCrossingAdapter" value="HANDSHAKE" />
@@ -112,6 +120,36 @@
  <interface
    name="clocked_audio_output_0_din"
    internal="clocked_audio_output_0.din" />
+ <interface
+   name="dc_fifo_0_in"
+   internal="dc_fifo_0.in"
+   type="avalon_streaming"
+   dir="end" />
+ <interface
+   name="dc_fifo_0_in_clk"
+   internal="dc_fifo_0.in_clk"
+   type="clock"
+   dir="end" />
+ <interface
+   name="dc_fifo_0_in_clk_reset"
+   internal="dc_fifo_0.in_clk_reset"
+   type="reset"
+   dir="end" />
+ <interface
+   name="dc_fifo_0_out"
+   internal="dc_fifo_0.out"
+   type="avalon_streaming"
+   dir="start" />
+ <interface
+   name="dc_fifo_0_out_clk"
+   internal="dc_fifo_0.out_clk"
+   type="clock"
+   dir="end" />
+ <interface
+   name="dc_fifo_0_out_clk_reset"
+   internal="dc_fifo_0.out_clk_reset"
+   type="reset"
+   dir="end" />
  <interface name="rst" internal="clk_0.clk_in_reset" type="reset" dir="end" />
  <module
    name="audio_0"
@@ -144,7 +182,7 @@
   <parameter name="line_in_bypass" value="false" />
   <parameter name="mic_attenuation" value="-6dB" />
   <parameter name="mic_bypass" value="false" />
-  <parameter name="sampling_rate" value="8 kHz" />
+  <parameter name="sampling_rate" value="48 kHz" />
   <parameter name="video_format" value="NTSC" />
  </module>
  <module
@@ -172,6 +210,24 @@
   <parameter name="FAMILY" value="Cyclone V" />
   <parameter name="G_CAO_FIFO_DEPTH" value="5" />
   <parameter name="G_CAO_INCLUDE_CTRL_REG" value="0" />
+ </module>
+ <module
+   name="dc_fifo_0"
+   kind="altera_avalon_dc_fifo"
+   version="20.1"
+   enabled="1">
+  <parameter name="BITS_PER_SYMBOL" value="24" />
+  <parameter name="CHANNEL_WIDTH" value="0" />
+  <parameter name="ENABLE_EXPLICIT_MAXCHANNEL" value="false" />
+  <parameter name="ERROR_WIDTH" value="0" />
+  <parameter name="EXPLICIT_MAXCHANNEL" value="0" />
+  <parameter name="FIFO_DEPTH" value="16" />
+  <parameter name="RD_SYNC_DEPTH" value="3" />
+  <parameter name="SYMBOLS_PER_BEAT" value="1" />
+  <parameter name="USE_IN_FILL_LEVEL" value="0" />
+  <parameter name="USE_OUT_FILL_LEVEL" value="0" />
+  <parameter name="USE_PACKETS" value="0" />
+  <parameter name="WR_SYNC_DEPTH" value="3" />
  </module>
  <connection
    kind="clock"

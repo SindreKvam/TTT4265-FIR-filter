@@ -25,11 +25,11 @@ architecture rtl of sine is
     signal state : T_STATE := CALCULATE;
     signal phase : unsigned(4 downto 0) := (others => '0');
 
-    constant coeff : T_LOOKUP :=  (
-        x"800000", x"99c426", x"b27a40", x"c91f50", x"dcc602", x"eca05f", x"f80842", x"fe8620",
-        x"ffd5f0", x"fbe9f2", x"f2eb41", x"e53823", x"d3602c", x"be1e5f", x"a65187", x"8cf315",
-        x"730cea", x"59ae78", x"41e1a0", x"2c9fd3", x"1ac7dc", x"0d14be", x"04160d", x"002a0f",
-        x"0179df", x"07f7bd", x"135fa0", x"2339fd", x"36e0af", x"4d85bf", x"663bd9", x"800000");
+    constant coeff : T_LOOKUP := (
+        x"800000",x"98f8b8",x"b0fbc5",x"c71cec",x"da8279",x"ea6d98",x"f641ae",x"fd8a5e",
+        x"ffffff",x"fd8a5e",x"f641ae",x"ea6d98",x"da8279",x"c71cec",x"b0fbc5",x"98f8b8",
+        x"800000",x"670747",x"4f043a",x"38e313",x"257d86",x"159267",x"09be51",x"0275a1",
+        x"000000",x"0275a1",x"09be51",x"159267",x"257d86",x"38e313",x"4f043a",x"670747");
 begin
 
 

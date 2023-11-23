@@ -159,7 +159,6 @@ architecture rtl of DE1_SoC_top_level is
 
     -- Mux
     signal random_counter : std_logic_vector(23 downto 0) := (others => '0');
-    signal random_counter2 : std_logic_vector(23 downto 0) := (others => '0');
     signal mux_sel  : std_logic_vector(1 downto 0) := (others => '0');
 
     -- Reset counter
@@ -247,13 +246,6 @@ begin
         end if;
     end process;
 
-    RANDOM2_PROC : process(audio_clk)
-    begin
-        if rising_edge(audio_clk) then
-            random_counter2 <= std_logic_vector(unsigned(random_counter2) + 97);
-        end if;
-    end process;
-
     RESET_PROC : process(audio_clk)
     begin
         if rising_edge(audio_clk) then
@@ -301,7 +293,7 @@ begin
                     fir_ready <= dac_ready_left;
                     lfsr_ready <= lfsr_ready_fir;
                 when "11" =>
-                    dac_data <= random_counter2;
+                    dac_data <= random_counter;
                     dac_valid <= '1';
                 when others =>
             
@@ -314,10 +306,10 @@ begin
 		port map (
 			audio_0_avalon_left_channel_sink_data            => dac_data,           --            audio_0_avalon_left_channel_sink.data
 			audio_0_avalon_left_channel_sink_valid           => dac_valid,          --                                            .valid
-			audio_0_avalon_left_channel_sink_ready           => dac_ready_left,    --                                            .ready
-			audio_0_avalon_right_channel_sink_data           => (others => '0'),           --           audio_0_avalon_right_channel_sink.data
-			audio_0_avalon_right_channel_sink_valid          => '1',          --                                            .valid
-			audio_0_avalon_right_channel_sink_ready          => open,     --                                            .ready
+			audio_0_avalon_left_channel_sink_ready           => dac_ready_left,     --                                            .ready
+            audio_0_avalon_right_channel_sink_data           => (others => '0'),    --           audio_0_avalon_right_channel_sink.data
+			audio_0_avalon_right_channel_sink_valid          => '1',                --                                            .valid
+			audio_0_avalon_right_channel_sink_ready          => open,               --                                            .ready
 			audio_0_external_interface_BCLK                  => AUD_BCLK,           --                  audio_0_external_interface.BCLK
 			audio_0_external_interface_DACDAT                => AUD_DACDAT,         --                                            .DACDAT
 			audio_0_external_interface_DACLRCK               => AUD_DACLRCK,        --                                            .DACLRCK
